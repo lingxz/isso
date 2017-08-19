@@ -1,12 +1,13 @@
 define({
-    "postbox-text": "Type Comment Here (at least 3 chars)",
+    "postbox-text": "Type comment here (at least 3 chars, markdown is allowed)",
     "postbox-author": "Name (optional)",
     "postbox-email": "E-mail (optional)",
     "postbox-website": "Website (optional)",
     "postbox-submit": "Submit",
+    "postbox-notification": "Subscribe to email notification of replies",
 
     "num-comments": "One Comment\n{{ n }} Comments",
-    "no-comments": "No Comments Yet",
+    "no-comments": "No comments yet",
 
     "comment-reply": "Reply",
     "comment-edit": "Edit",

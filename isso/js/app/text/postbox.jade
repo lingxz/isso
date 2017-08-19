@@ -15,3 +15,7 @@ div(class='isso-postbox')
                       value=website != null ? '#{website}' : '')
             p(class='post-action')
                 input(type='submit' value=i18n('postbox-submit'))
+        section(class='notify-section')
+            label
+                input(type='checkbox' name='notify')
+                |  Notify me of new replies by email (only works if email address is valid).

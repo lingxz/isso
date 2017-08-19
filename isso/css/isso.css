@@ -54,6 +54,10 @@
     border-radius: 3px;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
+.isso-postbox > .form-wrapper > .notify-section {
+    padding-bottom: 10px;
+}
+
 .isso-comment > div.text-wrapper {
     display: block;
 }

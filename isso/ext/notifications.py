@@ -49,7 +49,7 @@ class SMTP(object):
             def spooler(args):
                 try:
                     self._sendmail(args[b"subject"].decode("utf-8"),
-                                   args["body"].decode("utf-8"))
+                                    args["body"].decode("utf-8"))
                 except smtplib.SMTPConnectError:
                     return uwsgi.SPOOL_RETRY
                 else:
@@ -87,7 +87,7 @@ class SMTP(object):
     def __iter__(self):
         yield "comments.new:after-save", self.notify
 
-    def format(self, thread, comment):
+    def format(self, thread, comment, admin=False):
 
         rv = io.StringIO()
 
@@ -95,44 +95,62 @@ class SMTP(object):
         if comment["email"]:
             author += " <%s>" % comment["email"]
 
-        rv.write(author + " wrote:\n")
-        rv.write("\n")
-        rv.write(comment["text"] + "\n")
-        rv.write("\n")
+        if admin:
+            rv.write(author + " wrote:\n")
+            rv.write("\n")
+            rv.write(comment["text"] + "\n")
+            rv.write("\n")
 
-        if comment["website"]:
-            rv.write("User's URL: %s\n" % comment["website"])
+            if comment["website"]:
+                rv.write("User's URL: %s\n" % comment["website"])
 
-        rv.write("IP address: %s\n" % comment["remote_addr"])
-        rv.write("Link to comment: %s\n" % (local("origin") + thread["uri"] + "#isso-%i" % comment["id"]))
-        rv.write("\n")
+            rv.write("IP address: %s\n" % comment["remote_addr"])
+            rv.write("Link to comment: %s\n" % (local("origin") + thread["uri"] + "#isso-%i" % comment["id"]))
+            rv.write("\n")
 
-        uri = local("host") + "/id/%i" % comment["id"]
-        key = self.isso.sign(comment["id"])
+            uri = local("host") + "/id/%i" % comment["id"]
+            key = self.isso.sign(comment["id"])
 
-        rv.write("---\n")
-        rv.write("Delete comment: %s\n" % (uri + "/delete/" + key))
+            rv.write("---\n")
+            rv.write("Delete comment: %s\n" % (uri + "/delete/" + key))
 
-        if comment["mode"] == 2:
-            rv.write("Activate comment: %s\n" % (uri + "/activate/" + key))
+            if comment["mode"] == 2:
+                rv.write("Activate comment: %s\n" % (uri + "/activate/" + key))
+        else:
+            rv.write("Dear human,\n")
+            rv.write("\n")
+            rv.write("%s replied to a comment you subscribed to on %s:\n" % (author, local("origin") + thread["uri"]))
+            rv.write(comment["text"] + "\n\n")
+            rv.write("Link to comment: %s\n" % (local("origin") + thread["uri"] + "#isso-%i" % comment["id"]))
+            rv.write("\n")
+            rv.write("Cheers,\n")
+            rv.write("A bot")
 
         rv.seek(0)
         return rv.read()
 
     def notify(self, thread, comment):
+        if "parent" in comment:
+            comment_parent = self.isso.db.comments.get(comment["parent"])
 
-        body = self.format(thread, comment)
+            print("comment_parent:", comment_parent)
+            # Notify the author that a new comment is posted if requested
+            if comment_parent and "email" in comment_parent and comment_parent["notify"]:
+                body = self.format(thread, comment, admin=False)
+                subject = "Re: New comment posted on %s" % thread["title"]
+                self._retry(subject, body, to=comment_parent["email"])
 
+        body = self.format(thread, comment, admin=True)
         if uwsgi:
             uwsgi.spool({b"subject": thread["title"].encode("utf-8"),
                          b"body": body.encode("utf-8")})
         else:
             start_new_thread(self._retry, (thread["title"], body))
 
-    def _sendmail(self, subject, body):
+    def _sendmail(self, subject, body, to=None):
 
         from_addr = self.conf.get("from")
-        to_addr = self.conf.get("to")
+        to_addr = to or self.conf.get("to")
 
         msg = MIMEText(body, 'plain', 'utf-8')
         msg['From'] = from_addr
@@ -143,10 +161,10 @@ class SMTP(object):
         with self as con:
             con.sendmail(from_addr, to_addr, msg.as_string())
 
-    def _retry(self, subject, body):
+    def _retry(self, subject, body, to=None):
         for x in range(5):
             try:
-                self._sendmail(subject, body)
+                self._sendmail(subject, body, to)
             except smtplib.SMTPConnectError:
                 time.sleep(60)
             else:

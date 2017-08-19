@@ -14,4 +14,4 @@ class Signal(object):
 
     def __call__(self, origin, *args, **kwargs):
         for subscriber in self.subscriptions[origin]:
-            subscriber(*args, **kwargs)
+            subscriber(*args, **kwargs) # calls notify
