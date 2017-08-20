@@ -119,15 +119,24 @@ class SMTP(object):
         else:
             comment_parent = self.isso.db.comments.get(comment["parent"])
             uri = local("host") + "/id/%i" % comment_parent["id"]
-            rv.write("Dear human,\n")
-            rv.write("\n")
-            rv.write("%s replied to a comment you subscribed to on %s:\n" % (author, local("origin") + thread["uri"]))
-            rv.write(comment["text"] + "\n\n")
-            rv.write("Link to comment: %s\n" % (local("origin") + thread["uri"] + "#isso-%i" % comment["id"]))
-            rv.write("If you do not wish to receive any further notifications for this thread, click here: %s.\n" % (uri + "/unsubscribe"))
-            rv.write("\n")
-            rv.write("Cheers,\n")
+            rv.write("<html><body>Dear human,<br><br>%s replied to a comment you subscibed to on %s:<br>" % (author, local("origin") + thread["uri"]))
+            rv.write("<br>")
+            rv.write(comment["text"])
+            rv.write("<br><br>")
+            rv.write("<a href='%s'>Click here</a> to go to the comment." % (local("origin") + thread["uri"] + "#isso-%i" % comment["id"]))
+            rv.write("If you do not wish to receive any further notifications for this thread, <a href='%s'>click here</a>.<br>" % (uri + "/unsubscribe"))
+            rv.write("<br>")
+            rv.write("Cheers,<br>")
             rv.write("A bot")
+            # rv.write("Dear human,\n")
+            # rv.write("\n")
+            # rv.write("%s replied to a comment you subscribed to on %s:\n" % (author, local("origin") + thread["uri"]))
+            # rv.write(comment["text"] + "\n\n")
+            # rv.write("Link to comment: %s\n" % (local("origin") + thread["uri"] + "#isso-%i" % comment["id"]))
+            # rv.write("If you do not wish to receive any further notifications for this thread, click here: %s.\n" % (uri + "/unsubscribe"))
+            # rv.write("\n")
+            # rv.write("Cheers,\n")
+            # rv.write("A bot")
 
         rv.seek(0)
         return rv.read()
@@ -141,7 +150,7 @@ class SMTP(object):
             if comment_parent and "email" in comment_parent and comment_parent["notify"]:
                 body = self.format(thread, comment, admin=False)
                 subject = "Re: New comment posted on %s" % thread["title"]
-                self._retry(subject, body, to=comment_parent["email"])
+                self._retry(subject, body, to=comment_parent["email"], mime="html")
 
         body = self.format(thread, comment, admin=True)
         if uwsgi:
@@ -150,12 +159,12 @@ class SMTP(object):
         else:
             start_new_thread(self._retry, (thread["title"], body))
 
-    def _sendmail(self, subject, body, to=None):
+    def _sendmail(self, subject, body, to=None, mime="plain"):
 
         from_addr = self.conf.get("from")
         to_addr = to or self.conf.get("to")
 
-        msg = MIMEText(body, 'plain', 'utf-8')
+        msg = MIMEText(body, mime, 'utf-8')
         msg['From'] = from_addr
         msg['To'] = to_addr
         msg['Date'] = formatdate(localtime=True)
@@ -164,10 +173,10 @@ class SMTP(object):
         with self as con:
             con.sendmail(from_addr, to_addr, msg.as_string())
 
-    def _retry(self, subject, body, to=None):
+    def _retry(self, subject, body, to=None, mime="plain"):
         for x in range(5):
             try:
-                self._sendmail(subject, body, to)
+                self._sendmail(subject, body, to, mime)
             except smtplib.SMTPConnectError:
                 time.sleep(60)
             else:

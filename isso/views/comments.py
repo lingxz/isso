@@ -475,7 +475,6 @@ class API(object):
 
         if item is None:
             raise NotFound
-
         if request.method == "GET":
             modal = (
                 "<!DOCTYPE html>"
@@ -484,6 +483,7 @@ class API(object):
                 "<script>"
                 "  if (confirm('Are you sure you want to unsubscribe?')) {"
                 "      xhr = new XMLHttpRequest;"
+                "      xhr.onreadystatechange = function() { if (xhr.readyState == XMLHttpRequest.DONE) { alert(xhr.responseText) } };"
                 "      xhr.open('POST', window.location.href);"
                 "      xhr.send(null);"
                 "  }"
@@ -494,8 +494,7 @@ class API(object):
         with self.isso.lock:
             self.comments.unsubscribe(id)
         self.signal("comments.unsubscribe", id)
-
-        return Response("Yo", 200)
+        return Response("You have successfully unsubscribed. You can close this window now.")
 
     """
     @api {post} /id/:id/:action/key moderate
