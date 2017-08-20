@@ -117,11 +117,14 @@ class SMTP(object):
             if comment["mode"] == 2:
                 rv.write("Activate comment: %s\n" % (uri + "/activate/" + key))
         else:
+            comment_parent = self.isso.db.comments.get(comment["parent"])
+            uri = local("host") + "/id/%i" % comment_parent["id"]
             rv.write("Dear human,\n")
             rv.write("\n")
             rv.write("%s replied to a comment you subscribed to on %s:\n" % (author, local("origin") + thread["uri"]))
             rv.write(comment["text"] + "\n\n")
             rv.write("Link to comment: %s\n" % (local("origin") + thread["uri"] + "#isso-%i" % comment["id"]))
+            rv.write("If you do not wish to receive any further notifications for this thread, click here: %s.\n" % (uri + "/unsubscribe"))
             rv.write("\n")
             rv.write("Cheers,\n")
             rv.write("A bot")
@@ -183,6 +186,7 @@ class Stdout(object):
         yield "comments.edit", self._edit_comment
         yield "comments.delete", self._delete_comment
         yield "comments.activate", self._activate_comment
+        yield "comments.unsubscribe", self._unsubscribe_comment
 
     def _new_thread(self, thread):
         logger.info("new thread %(id)s: %(title)s" % thread)
@@ -198,3 +202,6 @@ class Stdout(object):
 
     def _activate_comment(self, id):
         logger.info("comment %s activated" % id)
+
+    def _unsubscribe_comment(self, id):
+        logger.info("comment %s unsubscribed" % id)

@@ -95,6 +95,8 @@ class API(object):
         ('moderate',('POST', '/id/<int:id>/<any(activate,delete):action>/<string:key>')),
         ('like',    ('POST', '/id/<int:id>/like')),
         ('dislike', ('POST', '/id/<int:id>/dislike')),
+        ('unsubscribe', ('GET', '/id/<int:id>/unsubscribe')),
+        ('unsubscribe', ('POST', '/id/<int:id>/unsubscribe')),
         ('demo',    ('GET', '/demo')),
         ('preview', ('POST', '/preview'))
     ]
@@ -466,6 +468,34 @@ class API(object):
         resp.headers.add("Set-Cookie", cookie(str(id)))
         resp.headers.add("X-Set-Cookie", cookie("isso-%i" % id))
         return resp
+
+
+    def unsubscribe(self, environ, request, id):
+        item = self.comments.get(id)
+
+        if item is None:
+            raise NotFound
+
+        if request.method == "GET":
+            modal = (
+                "<!DOCTYPE html>"
+                "<html>"
+                "<head>"
+                "<script>"
+                "  if (confirm('Are you sure you want to unsubscribe?')) {"
+                "      xhr = new XMLHttpRequest;"
+                "      xhr.open('POST', window.location.href);"
+                "      xhr.send(null);"
+                "  }"
+                "</script>")
+
+            return Response(modal, 200, content_type="text/html")
+
+        with self.isso.lock:
+            self.comments.unsubscribe(id)
+        self.signal("comments.unsubscribe", id)
+
+        return Response("Yo", 200)
 
     """
     @api {post} /id/:id/:action/key moderate
