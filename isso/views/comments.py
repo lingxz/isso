@@ -95,8 +95,8 @@ class API(object):
         ('moderate',('POST', '/id/<int:id>/<any(activate,delete):action>/<string:key>')),
         ('like',    ('POST', '/id/<int:id>/like')),
         ('dislike', ('POST', '/id/<int:id>/dislike')),
-        ('unsubscribe', ('GET', '/id/<int:id>/unsubscribe')),
-        ('unsubscribe', ('POST', '/id/<int:id>/unsubscribe')),
+        ('unsubscribe', ('GET', '/id/<int:id>/unsubscribe/<string:key>')),
+        ('unsubscribe', ('POST', '/id/<int:id>/unsubscribe/<string:key>')),
         ('demo',    ('GET', '/demo')),
         ('preview', ('POST', '/preview'))
     ]
@@ -470,11 +470,19 @@ class API(object):
         return resp
 
 
-    def unsubscribe(self, environ, request, id):
+    def unsubscribe(self, environ, request, id, key):
+        
+        try:
+            email = self.isso.unsign(key, max_age=2**32)
+        except (BadSignature, SignatureExpired):
+            raise Forbidden
+
         item = self.comments.get(id)
 
         if item is None:
             raise NotFound
+        if item["email"] != email:
+            raise Forbidden
         if request.method == "GET":
             modal = (
                 "<!DOCTYPE html>"

@@ -118,13 +118,14 @@ class SMTP(object):
                 rv.write("Activate comment: %s\n" % (uri + "/activate/" + key))
         else:
             comment_parent = self.isso.db.comments.get(comment["parent"])
+            key = self.isso.sign(comment_parent["email"])
             uri = local("host") + "/id/%i" % comment_parent["id"]
             rv.write("<html><body>Dear human,<br><br>%s replied to a comment you subscibed to on %s:<br>" % (author, local("origin") + thread["uri"]))
             rv.write("<br>")
             rv.write(comment["text"])
             rv.write("<br><br>")
             rv.write("<a href='%s'>Click here</a> to go to the comment." % (local("origin") + thread["uri"] + "#isso-%i" % comment["id"]))
-            rv.write("If you do not wish to receive any further notifications for this thread, <a href='%s'>click here</a>.<br>" % (uri + "/unsubscribe"))
+            rv.write("If you do not wish to receive any further notifications for this thread, <a href='%s'>click here</a>.<br>" % (uri + "/unsubscribe/" + key))
             rv.write("<br>")
             rv.write("Cheers,<br>")
             rv.write("A bot")
